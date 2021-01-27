@@ -14,4 +14,7 @@ public class Map : MonoBehaviour
 
     // 바닥위에 그릴 타일(선택된타일 - prefab)
     public GameObject selectedTile;
+
+    // 여러 타일 등록 할 수 있도록 하는 변수
+    public List<GameObject> tileList = new List<GameObject>();
 }

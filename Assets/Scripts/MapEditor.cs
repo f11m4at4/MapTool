@@ -10,6 +10,9 @@ public class MapEditor : Editor
 {
     Map map;
 
+    // 그리드를 그릴지 말지 여부
+    bool isDrawGrid = true;
+
     private void OnEnable()
     {
         // Map 인스턴스를 할당하기 위해 target 변수를 넣어주자
@@ -31,14 +34,21 @@ public class MapEditor : Editor
 
         map.floorTile = (GameObject)EditorGUILayout.ObjectField("바닥 타일", map.floorTile, typeof(GameObject), false);
 
+        // 선택 타일 그리기
+        //map.selectedTile = (GameObject)EditorGUILayout.ObjectField("선택타일", map.selectedTile, typeof(GameObject), true);
+
+        // tile 목록 그리기
+        DrawTileList();
+
+        // 그리드 그릴지 말지 여부
+        isDrawGrid = EditorGUILayout.Toggle("그리드 그릴까요?", isDrawGrid);
+
         // 인스펙터의 값이 변하면 씬 정보도 갱신하고 싶다.
-        if(GUI.changed)
+        if (GUI.changed)
         {
             EditorUtility.SetDirty(target);
         }
 
-        // 선택 타일 그리기
-        map.selectedTile = (GameObject)EditorGUILayout.ObjectField("선택타일", map.selectedTile, typeof(GameObject), true);
 
         GUILayout.Space(15);
         // 사용자가 생성 버튼을 누르면 타일을 생성하고 싶다.
@@ -55,6 +65,43 @@ public class MapEditor : Editor
             }
             CreateMap();
         }
+    }
+
+    void DrawTileList()
+    {
+        // 추가할 타일 입력 받기
+        GameObject tile = (GameObject)EditorGUILayout.ObjectField("타일 추가", null, typeof(GameObject), false);
+        // 사용자가 타일을 추가했으면 목록에 추가하자
+        if(tile)
+        {
+            map.tileList.Add(tile);
+        }
+
+        // 타일 목록 그리기
+        for(int i=0;i<map.tileList.Count;i++)
+        {
+            // 현재 인덱스 번째 타일의 이름을 지정
+            GUI.SetNextControlName("tile" + i);
+            map.tileList[i] = (GameObject)EditorGUILayout.ObjectField("타일 " + i, map.tileList[i], typeof(GameObject), false);
+            if(map.tileList[i] == null)
+            {
+                map.tileList.RemoveAt(i);
+                i--;
+            }
+        }
+
+        // 현재 선택 녀석의 컨트롤 이름 가져오기
+        string name = GUI.GetNameOfFocusedControl();
+        //Debug.Log("현재 선택된 타일 이름 : " + name);
+        // 만약 타일이 선택되면
+        if (name.Contains("tile"))
+        {
+            // 해당 타일의 프리팹을 가져와서 SelectedTile 에 넣어주자
+            int idx = int.Parse(name.Substring(4).Trim());
+
+            map.selectedTile = map.tileList[idx];
+        }
+
     }
 
     // Scene 뷰에 바닥타일을 이용하여 타일크기 만큼 그리자
@@ -104,13 +151,37 @@ public class MapEditor : Editor
         {
             DrawTile();
         }
+
+        // 선택된 타일 프리뷰 이미지 그려보자
+        DrawSelectedTilePreviewOnScene();
     }
 
-    // 사용자가 타일을 그릴 수 있도록 하자
-    // 마우스를 누르고 있으면 그려지게 하고 싶다.
+    void DrawSelectedTilePreviewOnScene()
+    {
+        // 1. 프리뷰이미지 가져오기
+        Texture2D preview = AssetPreview.GetAssetPreview(map.selectedTile);
+        if(preview == null)
+        {
+            preview = AssetPreview.GetMiniThumbnail(map.selectedTile);
+        }
+        // 2. 씬에 이미지 그리기
+        if(preview)
+        {
+            Handles.BeginGUI();
+            GUI.Button(new Rect(10, 10, 100, 100), preview);
+            Handles.EndGUI();
+        }
+
+        
+    }
+
+    // 1. 사용자가 타일을 그릴 수 있도록 하자
+    // 2. 마우스를 누르고 있으면 그려지게 하고 싶다.
     // 필요속성 : 누르고 있는 중인지 상태 기억 변수
     bool isMouseDownState = false;
-    // shift 키를 눌렀을 때는 타일을 지우게 하고싶다.
+    // 3. shift 키를 눌렀을 때는 타일을 지우게 하고싶다.
+    // 4. 바닥을 터치하면 타일을 해당 위치에 그리고
+    //    타일을 터치하면 타일 위에 타일을 새로 위치시키자
     void DrawTile()
     {
         // 사용자가 마우스를 클릭하면 그려지게 하고 싶다.
@@ -145,20 +216,44 @@ public class MapEditor : Editor
         // 3. Ray 를 쏜다.
         if (Physics.Raycast(ray, out hitInfo))
         {
-            // 만약 shift 키를 눌렀을 때 부딪힌 녀석이 바닥이면 지우지 않는다.
-            if(e.shift && hitInfo.transform.name == "Floor")
+            bool isShift = CheckShiftInput(e, hitInfo);
+            if(isShift)
             {
                 return;
             }
-            // 만약 shift 키 누르고 부딪힌 녀석이 Tile 이면 지운다.
-            if(e.shift && hitInfo.transform.name == "Tile")
-            {
-                DestroyImmediate(hitInfo.transform.gameObject);
-                return;
-            }
-            // 4. 닿은 지점에 타일 만들어서 위치 시킨다.
+
+            MakeAndLocateTile(hitInfo);
+            
+        }
+    }
+
+    private bool CheckShiftInput(Event e, RaycastHit hitInfo)
+    {
+        // 만약 shift 키를 눌렀을 때 부딪힌 녀석이 바닥이면 지우지 않는다.
+        if (e.shift && hitInfo.transform.name == "Floor")
+        {
+            return true;
+        }
+        //// 만약 shift 키 누르고 부딪힌 녀석이 Tile 이면 지운다.
+        //if (e.shift && hitInfo.transform.name == "Tile")
+        //{
+        //    DestroyImmediate(hitInfo.transform.gameObject);
+        //    return true;
+        //}
+
+        return false;
+    }
+
+    private void MakeAndLocateTile(RaycastHit hitInfo)
+    {
+        // 4. 닿은 지점에 타일 만들어서 위치 시킨다.
+        
+        // 부딪힌 녀석이 바닥이면 그냥 그지점에 만들고
+        if(hitInfo.transform.name == "Floor")
+        {
             GameObject tile = (GameObject)PrefabUtility.InstantiatePrefab(map.selectedTile);
             tile.name = "Tile";
+
             // 타일 배치
             // index 찾아오자
             int x = Mathf.FloorToInt(hitInfo.point.x % map.tileX);
@@ -167,10 +262,48 @@ public class MapEditor : Editor
             // Tiles 자식으로 등록하자
             tile.transform.parent = GameObject.Find("Tiles").transform;
         }
+        // 그렇지 않고 타일이면 타일 위쪽에 만들자
+        else
+        {
+            RaycastHit hit;
+            while (true)
+            {
+                Ray ray = new Ray(hitInfo.transform.position, Vector3.up);
+                if(Physics.Raycast(ray, out hit))
+                {
+                    hitInfo = hit;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            // 만약 shift 키를 누르면 타일 제거하고
+            if(Event.current.shift)
+            {
+                DestroyImmediate(hitInfo.transform.gameObject);
+                return;
+            }
+            // 그렇지 않으면 만들자
+
+            GameObject tile = (GameObject)PrefabUtility.InstantiatePrefab(map.selectedTile);
+            tile.name = "Tile";
+            // 배치
+            tile.transform.position = hitInfo.transform.position + Vector3.up;
+            // Tiles 자식으로 등록하자
+            tile.transform.parent = GameObject.Find("Tiles").transform;
+        }
+        
+        
     }
 
     private void DrawGrid()
     {
+        if(isDrawGrid == false)
+        {
+            return;
+        }
+        
         // 맵을 화면의 어디에서 부터 그릴지 위치 설정
         Vector3 center = Vector3.zero;
         // 그리드의 색상 지정
