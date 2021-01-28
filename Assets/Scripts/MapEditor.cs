@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 // 수정하려는 Map 변수를 기억하고 있다가 쓰도록 하자
 [CustomEditor(typeof(Map))]
@@ -69,6 +70,16 @@ public class MapEditor : Editor
                 }
             }
             CreateMap();
+        }
+
+        if (GUILayout.Button("저장"))
+        {
+            bool success = SaveMap();
+            string message = success ? "Save Success!" : "Save Fail!";
+            if (EditorUtility.DisplayDialog("Info", message, "OK"))
+            {
+                return;
+            }
         }
     }
 
@@ -348,5 +359,116 @@ public class MapEditor : Editor
 
             Handles.DrawLine(p1, p2);
         }
+    }
+
+    bool SaveMap()
+    {
+        string fileName = EditorUtility.SaveFilePanel("Save", Application.dataPath, "map", "dat");
+
+        GameObject floor = GameObject.Find("Floor");
+        if (floor == null)
+        {
+            return false;
+        }
+
+        // map data save
+        MapInfo info = new MapInfo();
+        info.tileX = map.tileX;
+        info.tileY = map.tileY;
+        info.prefabName = "Prefabs/"+map.floorTile.name;
+        info.x = floor.transform.position.x;
+        info.y = floor.transform.position.y;
+        info.z = floor.transform.position.z;
+
+
+        // tile data save
+        List<Tile> tiles = new List<Tile>();
+        foreach(Transform tile in floor.transform.parent)
+        {
+            if(tile.name == "Tile")
+            {
+                GameObject obj = PrefabUtility.GetCorrespondingObjectFromSource<GameObject>(tile.gameObject);
+                Tile t = new Tile();
+                t.prefabName = "Prefabs/" + obj.name;
+                t.x = tile.position.x;
+                t.y = tile.position.y;
+                t.z = tile.position.z;
+
+                tiles.Add(t);
+            }
+        }
+
+        try
+        {
+            BinaryFormatter bf = new BinaryFormatter();
+            FileStream file = File.Create(fileName);
+            //Debug.Log(Application.dataPath + "/mapInfo.dat");
+            bf.Serialize(file, info);
+            bf.Serialize(file, tiles);
+            
+            file.Close();
+        }
+        catch (IOException e)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    [MenuItem("MyMenu/Load Map")]
+    static bool LoadMap()
+    {
+        try
+        {
+            string fileName = EditorUtility.OpenFilePanel("Open Map", Application.dataPath, "dat");
+            if(fileName == null)
+            {
+                if (EditorUtility.DisplayDialog("Error", "Not found file", "OK"))
+                {
+                    return false;
+                }
+            }
+
+            BinaryFormatter bf = new BinaryFormatter();
+            FileStream file = File.Open(fileName, FileMode.Open);
+            //Debug.Log(Application.dataPath + "/mapInfo.dat");
+            if (file != null && file.Length > 0)
+            {
+                GameObject tileParent = GameObject.Find("Tiles");
+                if (tileParent)
+                {
+                    DestroyImmediate(tileParent);
+                }
+                tileParent = new GameObject("Tiles");
+
+                MapInfo info = (MapInfo)bf.Deserialize(file);
+                GameObject floorPrefab = Resources.Load(info.prefabName) as GameObject;
+                GameObject floor = (GameObject)PrefabUtility.InstantiatePrefab(floorPrefab);
+                floor.transform.localScale = new Vector3(info.tileX, 1, info.tileY);
+                floor.transform.position = new Vector3(info.x, info.y, info.z);
+                floor.name = "Floor";
+                
+                floor.transform.parent = tileParent.transform;
+
+                // Tile 배치
+                List<Tile> tiles = (List<Tile>)bf.Deserialize(file);
+                foreach(Tile tile in tiles)
+                {
+                    GameObject tilePrefab = Resources.Load(tile.prefabName) as GameObject;
+                    GameObject t = (GameObject)PrefabUtility.InstantiatePrefab(tilePrefab);
+                    t.transform.position = new Vector3(tile.x, tile.y, tile.z);
+                    t.name = "Tile";
+                    t.transform.parent = floor.transform.parent;
+                }
+                file.Close();
+            }
+        }
+        catch (IOException e)
+        {
+            return false;
+        }
+
+        return true;
     }
 }

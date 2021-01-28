@@ -3,6 +3,33 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
+[System.Serializable]
+public enum TileType
+{
+    floorTile,
+    tile
+}
+
+[System.Serializable]
+public struct MapInfo
+{
+    public int tileX;
+    public int tileY;    
+    public string prefabName;
+    public float x;
+    public float y;
+    public float z;
+}
+
+[System.Serializable]
+public struct Tile
+{
+    public string prefabName;
+    public float x;
+    public float y;
+    public float z;
+}
+
 // 단순 정보만을 갖고있는 클레스
 // -> 타일 크기(X, Y)
 public class Map : MonoBehaviour
@@ -41,4 +68,7 @@ public class Map : MonoBehaviour
         window.maxSize = new Vector2(400, 400);
         window.Show();
     }
+
+    
+    
 }

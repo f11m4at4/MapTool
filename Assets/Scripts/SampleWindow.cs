@@ -5,5 +5,5 @@ using UnityEditor;
 
 public class SampleWindow : EditorWindow
 {
-
+    
 }
