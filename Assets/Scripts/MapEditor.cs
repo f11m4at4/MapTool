@@ -10,8 +10,7 @@ public class MapEditor : Editor
 {
     Map map;
 
-    // 그리드를 그릴지 말지 여부
-    bool isDrawGrid = true;
+    
 
     private void OnEnable()
     {
@@ -40,8 +39,11 @@ public class MapEditor : Editor
         // tile 목록 그리기
         DrawTileList();
 
+        // 타일 생성 간격
+        map.tileCreateTime = EditorGUILayout.FloatField("타일 생성 간격", map.tileCreateTime);
+
         // 그리드 그릴지 말지 여부
-        isDrawGrid = EditorGUILayout.Toggle("그리드 그릴까요?", isDrawGrid);
+        map.isDrawGrid = EditorGUILayout.Toggle("그리드 그릴까요?", map.isDrawGrid);
 
         // 인스펙터의 값이 변하면 씬 정보도 갱신하고 싶다.
         if (GUI.changed)
@@ -49,6 +51,8 @@ public class MapEditor : Editor
             EditorUtility.SetDirty(target);
         }
 
+        // 속성 저장 되도록 해보자
+        //SerializedProperty tileX
 
         GUILayout.Space(15);
         // 사용자가 생성 버튼을 누르면 타일을 생성하고 싶다.
@@ -182,6 +186,10 @@ public class MapEditor : Editor
     // 3. shift 키를 눌렀을 때는 타일을 지우게 하고싶다.
     // 4. 바닥을 터치하면 타일을 해당 위치에 그리고
     //    타일을 터치하면 타일 위에 타일을 새로 위치시키자
+    // 5. 일정 시간에 한번씩 타일을 만들고 싶다.
+    // 필요속성 : 딜레이시간, 경과시간
+    float currentTime;
+
     void DrawTile()
     {
         // 사용자가 마우스를 클릭하면 그려지게 하고 싶다.
@@ -197,6 +205,7 @@ public class MapEditor : Editor
         if(e.type == EventType.MouseDown)
         {
             isMouseDownState = true;
+            currentTime = map.tileCreateTime;
         }
         else if (e.type == EventType.MouseUp)
         {
@@ -207,6 +216,17 @@ public class MapEditor : Editor
         {
             return;
         }
+
+        // 일정 시간에 한번씩 타일을 만들고 싶다.
+        // 1. 시간이 흘렀으니까
+        currentTime += Time.fixedDeltaTime;
+        // 2. 일정시간이 됐으니까
+        if(currentTime < map.tileCreateTime)
+        {
+            return;
+        }
+        currentTime = 0;
+        // 3. 타일을 만들고 싶다.
 
         // Ray 를 쏴서 닿은 그 지점에 타일을 만들어서 위치 시키자
         // 1. Ray 가 필요
@@ -299,7 +319,7 @@ public class MapEditor : Editor
 
     private void DrawGrid()
     {
-        if(isDrawGrid == false)
+        if(map.isDrawGrid == false)
         {
             return;
         }

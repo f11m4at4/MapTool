@@ -17,4 +17,8 @@ public class Map : MonoBehaviour
 
     // 여러 타일 등록 할 수 있도록 하는 변수
     public List<GameObject> tileList = new List<GameObject>();
+
+    public float tileCreateTime = 0.2f;
+    // 그리드를 그릴지 말지 여부
+    public bool isDrawGrid = true;
 }
