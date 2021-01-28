@@ -49,6 +49,7 @@ public class MapEditor : Editor
         if (GUI.changed)
         {
             EditorUtility.SetDirty(target);
+            
         }
 
         // 속성 저장 되도록 해보자
