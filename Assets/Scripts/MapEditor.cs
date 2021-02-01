@@ -374,10 +374,114 @@ public class MapEditor : Editor
             return "저장할 데이터가 없습니다.\nFloor 객체가 있는지 확인 하세요.";
         }
 
+        MapInfo info = new MapInfo();
+        info.width = map.tileX;
+        info.height = map.tileY;
+        info.prefabName = "Prefabs/" + map.floorTile.name;
+        info.x = floor.transform.position.x;
+        info.y = floor.transform.position.y;
+        info.z = floor.transform.position.z;
+
         // 2. Tile 들 저장
+        List<Tile> tiles = new List<Tile>();
+        // Tiles 밑에 있는 타일
+        // floor 부모(Tiles)가 갖고 있는 모든 자식들의 Transform 을 하나씩 꺼내온다.
+        foreach(Transform tile in floor.transform.parent)
+        {
+            // Tile 만 검출해서 데이터로 만들고 싶다.
+            if(tile.name == "Tile")
+            {
+                // 게임 오브젝트가 참조 하고 있는 원본프리팹 정보가 필요하다.
+                GameObject obj = PrefabUtility.GetCorrespondingObjectFromSource<GameObject>(tile.gameObject);
+                // Tiel 구조체 만들기
+                Tile t = new Tile();
+                t.prefabName = "Prefabs/" + obj.name;
+                t.x = tile.position.x;
+                t.y = tile.position.y;
+                t.z = tile.position.z;
+
+                tiles.Add(t);
+            }
+        }
 
         // 3. 파일이름 만들기 -> 파일 저장 다이얼로그 띄워서 저장할 파일이름 경로 가져오기
         string fileName = EditorUtility.SaveFilePanel("Save Map", Application.dataPath, "map", "dat");
+
+        // 데이터를 저장하자
+        // Exception 처리
+        try
+        {
+            // 코드작성
+            BinaryFormatter bf = new BinaryFormatter();
+            // 파일을 열고 통로(스트림) 만들기
+            FileStream file = File.Create(fileName);
+            // 데이터를 파일로 쓰기
+            bf.Serialize(file, info);
+            bf.Serialize(file, tiles);
+            // 파일 닫아 주기
+            file.Close();
+        }
+        // 만약 오류가 발생하면
+        catch(System.Exception e)
+        {
+            return "오류 발생 : " + e.Message;
+        }
+
         return "Save Success!!";
+    }
+
+    // 저장된 데이터 불러오기
+    [MenuItem("MyMenu/Load Map")]
+    static void LoadMap()
+    {
+        try
+        {
+            // 1. 저장된 파일이름 필요
+            string fileName = EditorUtility.OpenFilePanel("Open Map", Application.dataPath, "dat");
+            if(fileName == null)
+            {
+                EditorUtility.DisplayDialog("오류", "선택된 파일이 없습니다.", "OK");
+                return;
+            }
+            // 2. 파일 열기
+            // 3. 스트림 연결
+            FileStream file = File.Open(fileName, FileMode.Open);
+            if(file == null || file.Length < 1)
+            {
+                EditorUtility.DisplayDialog("오류", "잘못된 파일입니다.", "OK");
+                return;
+            }
+            // 4. 데이터 불러오기
+            BinaryFormatter bf = new BinaryFormatter();
+            MapInfo info = (MapInfo)bf.Deserialize(file);
+            List<Tile> tiles = (List<Tile>)bf.Deserialize(file);
+            // 5. 씬 재구성하기
+            // - 씬에 Tiles 가 있으면 제거 하고 새로 만들자
+            GameObject tilesParent = GameObject.Find("Tiles");
+            if(tilesParent)
+            {
+                DestroyImmediate(tilesParent);
+            }
+            tilesParent = new GameObject("Tiles");
+
+            // 5.1 바닥타일(맵정보) 재구성
+            // - 바닥타일 프리팹 로드
+            GameObject floorPrefab = (GameObject)Resources.Load(info.prefabName);
+            // - 객체 생성
+            GameObject floor = (GameObject)PrefabUtility.InstantiatePrefab(floorPrefab);
+            // - 크기 및 위치
+            floor.transform.localScale = new Vector3(info.width, 1, info.height);
+            floor.transform.position = new Vector3(info.x, info.y, info.z);
+            // - 이름 지정
+            floor.name = "Floor";
+            // - 부모를 Tiles 로 지정
+            floor.transform.parent = tilesParent.transform;
+            // 5.2 일반타일들 재구성
+
+        }
+        catch(System.Exception e)
+        {
+
+        }
     }
 }
