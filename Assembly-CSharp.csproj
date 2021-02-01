@@ -57,9 +57,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Resources\Prefabs\RectTest.cs" />
+    <Compile Include="Assets\Scripts\SampleWindow.cs" />
     <Compile Include="Assets\Scripts\MapEditor.cs" />
     <Compile Include="Assets\Scripts\Map.cs" />
-    <Compile Include="Assets\Scripts\SampleWindow.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

@@ -72,14 +72,14 @@ public class MapEditor : Editor
             CreateMap();
         }
 
-        if (GUILayout.Button("저장"))
+        // 저장 버튼 그리기
+        GUILayout.Space(5);
+        if(GUILayout.Button("맵 저장"))
         {
-            bool success = SaveMap();
-            string message = success ? "Save Success!" : "Save Fail!";
-            if (EditorUtility.DisplayDialog("Info", message, "OK"))
-            {
-                return;
-            }
+            string message = SaveMap();
+            // success 가 true 면 저장 성공, 그렇지 않으면 저장 실패 메시지 띄우고 싶다.
+            // 저장 성공여부 다이얼로그 띄우기
+            EditorUtility.DisplayDialog("Save Info", message, "확인");
         }
     }
 
@@ -361,114 +361,23 @@ public class MapEditor : Editor
         }
     }
 
-    bool SaveMap()
+    // map data 저장하기
+    string SaveMap()
     {
-        string fileName = EditorUtility.SaveFilePanel("Save", Application.dataPath, "map", "dat");
 
+        // 1. MapInfo 저장 (바닥타일)
+        // 바닥타일 정보를 저장하고 싶다.
+        // - 바닥타일이 있는지 조사 해서 없으면 함수 종료
         GameObject floor = GameObject.Find("Floor");
-        if (floor == null)
+        if(floor == null)
         {
-            return false;
+            return "저장할 데이터가 없습니다.\nFloor 객체가 있는지 확인 하세요.";
         }
 
-        // map data save
-        MapInfo info = new MapInfo();
-        info.tileX = map.tileX;
-        info.tileY = map.tileY;
-        info.prefabName = "Prefabs/"+map.floorTile.name;
-        info.x = floor.transform.position.x;
-        info.y = floor.transform.position.y;
-        info.z = floor.transform.position.z;
+        // 2. Tile 들 저장
 
-
-        // tile data save
-        List<Tile> tiles = new List<Tile>();
-        foreach(Transform tile in floor.transform.parent)
-        {
-            if(tile.name == "Tile")
-            {
-                GameObject obj = PrefabUtility.GetCorrespondingObjectFromSource<GameObject>(tile.gameObject);
-                Tile t = new Tile();
-                t.prefabName = "Prefabs/" + obj.name;
-                t.x = tile.position.x;
-                t.y = tile.position.y;
-                t.z = tile.position.z;
-
-                tiles.Add(t);
-            }
-        }
-
-        try
-        {
-            BinaryFormatter bf = new BinaryFormatter();
-            FileStream file = File.Create(fileName);
-            //Debug.Log(Application.dataPath + "/mapInfo.dat");
-            bf.Serialize(file, info);
-            bf.Serialize(file, tiles);
-            
-            file.Close();
-        }
-        catch (IOException e)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    [MenuItem("MyMenu/Load Map")]
-    static bool LoadMap()
-    {
-        try
-        {
-            string fileName = EditorUtility.OpenFilePanel("Open Map", Application.dataPath, "dat");
-            if(fileName == null)
-            {
-                if (EditorUtility.DisplayDialog("Error", "Not found file", "OK"))
-                {
-                    return false;
-                }
-            }
-
-            BinaryFormatter bf = new BinaryFormatter();
-            FileStream file = File.Open(fileName, FileMode.Open);
-            //Debug.Log(Application.dataPath + "/mapInfo.dat");
-            if (file != null && file.Length > 0)
-            {
-                GameObject tileParent = GameObject.Find("Tiles");
-                if (tileParent)
-                {
-                    DestroyImmediate(tileParent);
-                }
-                tileParent = new GameObject("Tiles");
-
-                MapInfo info = (MapInfo)bf.Deserialize(file);
-                GameObject floorPrefab = Resources.Load(info.prefabName) as GameObject;
-                GameObject floor = (GameObject)PrefabUtility.InstantiatePrefab(floorPrefab);
-                floor.transform.localScale = new Vector3(info.tileX, 1, info.tileY);
-                floor.transform.position = new Vector3(info.x, info.y, info.z);
-                floor.name = "Floor";
-                
-                floor.transform.parent = tileParent.transform;
-
-                // Tile 배치
-                List<Tile> tiles = (List<Tile>)bf.Deserialize(file);
-                foreach(Tile tile in tiles)
-                {
-                    GameObject tilePrefab = Resources.Load(tile.prefabName) as GameObject;
-                    GameObject t = (GameObject)PrefabUtility.InstantiatePrefab(tilePrefab);
-                    t.transform.position = new Vector3(tile.x, tile.y, tile.z);
-                    t.name = "Tile";
-                    t.transform.parent = floor.transform.parent;
-                }
-                file.Close();
-            }
-        }
-        catch (IOException e)
-        {
-            return false;
-        }
-
-        return true;
+        // 3. 파일이름 만들기 -> 파일 저장 다이얼로그 띄워서 저장할 파일이름 경로 가져오기
+        string fileName = EditorUtility.SaveFilePanel("Save Map", Application.dataPath, "map", "dat");
+        return "Save Success!!";
     }
 }

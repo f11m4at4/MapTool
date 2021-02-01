@@ -3,19 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-[System.Serializable]
-public enum TileType
-{
-    floorTile,
-    tile
-}
-
+// 바닥 타일 정보
 [System.Serializable]
 public struct MapInfo
 {
-    public int tileX;
-    public int tileY;    
+    // 타일 크기
+    public int width;
+    public int height;
+    // 로드할 프리팹 이름
     public string prefabName;
+    // 위치
     public float x;
     public float y;
     public float z;
@@ -24,7 +21,9 @@ public struct MapInfo
 [System.Serializable]
 public struct Tile
 {
+    // 로드할 프리팹 이름
     public string prefabName;
+    // 위치
     public float x;
     public float y;
     public float z;
