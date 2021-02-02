@@ -60,6 +60,8 @@
     <Compile Include="Assets\Scripts\SampleWindow.cs" />
     <Compile Include="Assets\Scripts\MapEditor.cs" />
     <Compile Include="Assets\Scripts\Map.cs" />
+    <Compile Include="Assets\Scripts\CamRot.cs" />
+    <Compile Include="Assets\Scripts\Drone.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
