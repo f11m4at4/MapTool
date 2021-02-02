@@ -67,7 +67,4 @@ public class Map : MonoBehaviour
         window.maxSize = new Vector2(400, 400);
         window.Show();
     }
-
-    
-    
 }

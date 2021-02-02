@@ -455,6 +455,8 @@ public class MapEditor : Editor
             BinaryFormatter bf = new BinaryFormatter();
             MapInfo info = (MapInfo)bf.Deserialize(file);
             List<Tile> tiles = (List<Tile>)bf.Deserialize(file);
+            file.Close();
+
             // 5. 씬 재구성하기
             // - 씬에 Tiles 가 있으면 제거 하고 새로 만들자
             GameObject tilesParent = GameObject.Find("Tiles");
@@ -477,11 +479,24 @@ public class MapEditor : Editor
             // - 부모를 Tiles 로 지정
             floor.transform.parent = tilesParent.transform;
             // 5.2 일반타일들 재구성
+            foreach(Tile tile in tiles)
+            {
+                // 1. 프리팹 로드
+                GameObject tilePrefab = Resources.Load(tile.prefabName) as GameObject;
+                // 2. 객체 생성
+                GameObject t = PrefabUtility.InstantiatePrefab(tilePrefab) as GameObject;
+                // 3. 위치지정
+                t.transform.position = new Vector3(tile.x, tile.y, tile.z);
+                // 4. 이름 지정
+                t.name = "Tile";
+                // 5. Tiles 의 자식으로 등록
+                t.transform.parent = tilesParent.transform;
+            }
 
         }
         catch(System.Exception e)
         {
-
+            EditorUtility.DisplayDialog("오류", e.Message, "확인");
         }
     }
 }
